@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Che!">
+<title>Che! — Spanisch sprechen</title>
+<style>
+  :root {
+    --bg: #f7f4ee;
+    --surface: #ffffff;
+    --ink: #23211c;
+    --muted: #7a756a;
+    --accent: #2f7d6d;
+    --accent-ink: #ffffff;
+    --user-bubble: #2f7d6d;
+    --user-ink: #ffffff;
+    --bot-bubble: #ffffff;
+    --corr-bg: #fdf3e3;
+    --corr-border: #e8c98a;
+    --danger: #b3462e;
+    --border: #e4dfd4;
+    --shadow: 0 1px 3px rgba(40,35,25,.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #191813;
+      --surface: #242219;
+      --ink: #ece8dd;
+      --muted: #9a9485;
+      --accent: #4fa08d;
+      --accent-ink: #10201c;
+      --user-bubble: #35695d;
+      --user-ink: #ecf5f2;
+      --bot-bubble: #26241c;
+      --corr-bg: #2e2a1e;
+      --corr-border: #6e5c33;
+      --danger: #d97a5e;
+      --border: #3a372c;
+      --shadow: none;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+    background: var(--bg); color: var(--ink);
+    display: flex; flex-direction: column;
+    overscroll-behavior: none;
+  }
+  .view { display: none; flex-direction: column; flex: 1; min-height: 0; }
+  .view.active { display: flex; }
+
+  header {
+    padding: calc(env(safe-area-inset-top) + 10px) 16px 10px;
+    display: flex; align-items: center; gap: 10px;
+    background: var(--bg); border-bottom: 1px solid var(--border);
+    flex: none;
+  }
+  header h1 { font-size: 17px; font-weight: 700; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  header .sub { font-size: 12px; color: var(--muted); font-weight: 400; }
+  .iconbtn {
+    border: none; background: none; color: var(--ink);
+    font-size: 20px; padding: 6px 8px; border-radius: 10px; cursor: pointer;
+  }
+  .iconbtn:active { background: var(--border); }
+
+  main { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px; }
+
+  /* ---------- Home ---------- */
+  .variant-toggle {
+    display: flex; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden; margin-bottom: 16px;
+  }
+  .variant-toggle button {
+    flex: 1; border: none; background: none; color: var(--muted);
+    padding: 10px; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .variant-toggle button.on { background: var(--accent); color: var(--accent-ink); }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px 12px; cursor: pointer; box-shadow: var(--shadow);
+    display: flex; flex-direction: column; gap: 4px; text-align: left;
+    font-family: inherit; color: var(--ink);
+  }
+  .card:active { transform: scale(.97); }
+  .card .emoji { font-size: 24px; }
+  .card .t { font-weight: 650; font-size: 14px; }
+  .card .d { font-size: 12px; color: var(--muted); line-height: 1.3; }
+  .home-note { margin-top: 18px; font-size: 12px; color: var(--muted); text-align: center; line-height: 1.5; }
+
+  /* ---------- Chat ---------- */
+  #chat-log { display: flex; flex-direction: column; gap: 10px; padding-bottom: 8px; }
+  .msg { max-width: 86%; padding: 10px 13px; border-radius: 16px; font-size: 16px; line-height: 1.45; white-space: pre-wrap; word-wrap: break-word; }
+  .msg.user { align-self: flex-end; background: var(--user-bubble); color: var(--user-ink); border-bottom-right-radius: 5px; }
+  .msg.bot  { align-self: flex-start; background: var(--bot-bubble); border: 1px solid var(--border); border-bottom-left-radius: 5px; box-shadow: var(--shadow); }
+  .msg.bot .replay { border: none; background: none; color: var(--muted); font-size: 14px; padding: 2px 0 0; cursor: pointer; display: block; }
+  .corr {
+    align-self: flex-end; max-width: 86%;
+    background: var(--corr-bg); border: 1px solid var(--corr-border);
+    border-radius: 12px; padding: 8px 12px; font-size: 13px; line-height: 1.5;
+  }
+  .corr b { color: var(--accent); }
+  .corr s { color: var(--danger); }
+  .sys { align-self: center; font-size: 12px; color: var(--muted); text-align: center; padding: 4px 12px; }
+  .sys.err { color: var(--danger); }
+  .typing { align-self: flex-start; color: var(--muted); font-size: 14px; padding: 4px 8px; }
+
+  #composer {
+    flex: none; padding: 10px 12px calc(env(safe-area-inset-bottom) + 10px);
+    background: var(--bg); border-top: 1px solid var(--border);
+    display: flex; gap: 8px; align-items: flex-end;
+  }
+  #composer textarea {
+    flex: 1; resize: none; border: 1px solid var(--border); border-radius: 18px;
+    background: var(--surface); color: var(--ink);
+    font-family: inherit; font-size: 16px; padding: 10px 14px; max-height: 110px;
+    outline: none;
+  }
+  .micbtn, .sendbtn {
+    flex: none; width: 46px; height: 46px; border-radius: 50%;
+    border: none; font-size: 20px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .micbtn { background: var(--accent); color: var(--accent-ink); }
+  .micbtn.rec { background: var(--danger); color: #fff; animation: pulse 1.2s infinite; }
+  .sendbtn { background: var(--surface); border: 1px solid var(--border); color: var(--ink); }
+  @keyframes pulse { 0%{transform:scale(1)} 50%{transform:scale(1.12)} 100%{transform:scale(1)} }
+  #interim { font-size: 13px; color: var(--muted); padding: 0 16px 4px; min-height: 18px; font-style: italic; }
+
+  /* ---------- Forms / settings ---------- */
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .field input, .field select {
+    width: 100%; padding: 11px 12px; font-size: 16px;
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--surface); color: var(--ink); font-family: inherit;
+  }
+  .field .hint { font-size: 12px; color: var(--muted); margin-top: 5px; line-height: 1.4; }
+  .btn {
+    display: block; width: 100%; padding: 13px; font-size: 16px; font-weight: 650;
+    border: none; border-radius: 12px; background: var(--accent); color: var(--accent-ink);
+    cursor: pointer; font-family: inherit;
+  }
+  .btn.secondary { background: var(--surface); color: var(--ink); border: 1px solid var(--border); }
+  .btn.danger { background: none; color: var(--danger); border: 1px solid var(--danger); }
+  .btn + .btn { margin-top: 10px; }
+  .setup-logo { text-align: center; margin: 30px 0 24px; }
+  .setup-logo .big { font-size: 52px; }
+  .setup-logo h2 { font-size: 24px; margin-top: 6px; }
+  .setup-logo p { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+  /* ---------- Fehler-Liste ---------- */
+  .err-item {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 10px 12px; margin-bottom: 8px; font-size: 14px; line-height: 1.5;
+  }
+  .err-item .count { float: right; font-size: 12px; color: var(--muted); }
+  .err-item s { color: var(--danger); }
+  .err-item b { color: var(--accent); }
+  .err-item .nota { font-size: 12px; color: var(--muted); }
+  .empty { text-align: center; color: var(--muted); margin-top: 40px; font-size: 14px; line-height: 1.6; }
+  .version { text-align: center; color: var(--muted); font-size: 11px; margin: 20px 0 8px; }
+</style>
+</head>
+<body>
+
+<!-- ============ SETUP ============ -->
+<div class="view" id="view-setup">
+  <main>
+    <div class="setup-logo">
+      <div class="big">🧉</div>
+      <h2>¡Che!</h2>
+      <p>Dein Spanisch-Sprechtrainer</p>
+    </div>
+    <div class="field">
+      <label for="setup-key">Anthropic API-Key</label>
+      <input id="setup-key" type="password" placeholder="sk-ant-..." autocomplete="off">
+      <div class="hint">Bleibt nur auf diesem Gerät gespeichert (localStorage) und geht direkt an api.anthropic.com – keinen anderen Server.</div>
+    </div>
+    <button class="btn" id="setup-save">Los geht's</button>
+  </main>
+</div>
+
+<!-- ============ HOME ============ -->
+<div class="view" id="view-home">
+  <header>
+    <h1>🧉 ¡Che! <span class="sub" id="home-model"></span></h1>
+    <button class="iconbtn" onclick="showView('errors')" title="Meine Fehler">📒</button>
+    <button class="iconbtn" onclick="showView('settings')" title="Einstellungen">⚙️</button>
+  </header>
+  <main>
+    <div class="variant-toggle">
+      <button id="var-uy" onclick="setVariant('uy')">🇺🇾 Rioplatense</button>
+      <button id="var-es" onclick="setVariant('es')">🇪🇸 España</button>
+    </div>
+    <div class="cards" id="scenario-cards"></div>
+    <div class="home-note">Tippe ein Szenario und sprich einfach los.<br>Korrekturen erscheinen dezent unter deinen Sätzen.</div>
+  </main>
+</div>
+
+<!-- ============ CHAT ============ -->
+<div class="view" id="view-chat">
+  <header>
+    <button class="iconbtn" onclick="leaveChat()">←</button>
+    <h1 id="chat-title">Gespräch</h1>
+    <button class="iconbtn" id="tts-toggle" onclick="toggleTts()" title="Vorlesen an/aus">🔊</button>
+  </header>
+  <main id="chat-main"><div id="chat-log"></div></main>
+  <div id="interim"></div>
+  <div id="composer">
+    <textarea id="input" rows="1" placeholder="…oder schreiben" enterkeyhint="send"></textarea>
+    <button class="sendbtn" id="send" title="Senden">➤</button>
+    <button class="micbtn" id="mic" title="Sprechen">🎙️</button>
+  </div>
+</div>
+
+<!-- ============ FEHLER ============ -->
+<div class="view" id="view-errors">
+  <header>
+    <button class="iconbtn" onclick="showView('home')">←</button>
+    <h1>📒 Meine Fehler</h1>
+  </header>
+  <main>
+    <div id="err-list"></div>
+    <div class="empty" id="err-empty" style="display:none">Noch keine Fehler gesammelt.<br>Sprich einfach drauflos – die App merkt sich, was hakt, und übt es mit dir.</div>
+  </main>
+</div>
+
+<!-- ============ SETTINGS ============ -->
+<div class="view" id="view-settings">
+  <header>
+    <button class="iconbtn" onclick="showView('home')">←</button>
+    <h1>⚙️ Einstellungen</h1>
+  </header>
+  <main>
+    <div class="field">
+      <label for="set-model">Modell</label>
+      <select id="set-model">
+        <option value="claude-opus-5">Claude Opus 5 – beste Qualität</option>
+        <option value="claude-haiku-4-5">Claude Haiku 4.5 – schnell &amp; günstig</option>
+      </select>
+      <div class="hint">Opus für die besten Korrekturen und natürlichste Gespräche; Haiku wenn's flott und billig sein soll.</div>
+    </div>
+    <div class="field">
+      <label for="set-level">Mein Level</label>
+      <select id="set-level">
+        <option value="A2">A2 – solide Basics</option>
+        <option value="B1">B1 – komme durch</option>
+        <option value="B2">B2 – flüssig mit Lücken</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="set-reclang">Spracherkennung (Mikrofon)</label>
+      <select id="set-reclang">
+        <option value="auto">Automatisch nach Variante</option>
+        <option value="es-MX">Español (México)</option>
+        <option value="es-US">Español (EE.UU.)</option>
+        <option value="es-ES">Español (España)</option>
+        <option value="es-AR">Español (Argentina)</option>
+      </select>
+      <div class="hint">Falls dich das Mikrofon schlecht versteht, probier eine andere Variante.</div>
+    </div>
+    <div class="field">
+      <label for="set-voice">Vorlese-Stimme</label>
+      <select id="set-voice"><option value="auto">Automatisch</option></select>
+    </div>
+    <div class="field">
+      <label for="set-key">API-Key</label>
+      <input id="set-key" type="password" autocomplete="off">
+    </div>
+    <button class="btn" onclick="saveSettings()">Speichern</button>
+    <button class="btn danger" onclick="clearErrors()">Fehler-Liste leeren</button>
+    <div class="version">¡Che! v0.1.0</div>
+  </main>
+</div>
+
+<script>
+"use strict";
+/* =====================================================================
+   ¡Che! – Spanisch-Sprechtrainer (Rioplatense + España)
+   Eine Datei, kein Build, kein Server außer api.anthropic.com.
+   ===================================================================== */
+
+const APP_VERSION = "0.1.0";
+const API_URL = "https://api.anthropic.com/v1/messages";
+
+/* ---------- Szenarien ---------- */
+const SCENARIOS = [
+  { id: "libre",    emoji: "💬", t: "Frei quatschen",     d: "Ohne Skript, worüber du willst" },
+  { id: "asado",    emoji: "🥩", t: "Asado mit der Familie", d: "Smalltalk mit den Suegros aus Uruguay" },
+  { id: "surf",     emoji: "🏄", t: "Surfshop Zarautz",   d: "Board leihen, Spots erfragen" },
+  { id: "camping",  emoji: "🚐", t: "Camping-Check-in",   d: "Stellplatz, Strom, Duschen klären" },
+  { id: "bar",      emoji: "🍢", t: "Pintxos-Bar",        d: "Bestellen, zahlen, Empfehlungen" },
+  { id: "mercado",  emoji: "🍅", t: "Mercado",            d: "Einkaufen, Mengen, Preise" },
+  { id: "mate",     emoji: "🧉", t: "Mate-Runde",         d: "Übers Leben reden, uruguayisch" },
+  { id: "sorpresa", emoji: "🎲", t: "Überrasch mich",     d: "Zufälliges Alltagsszenario" },
+];
+
+const SCENARIO_PROMPTS = {
+  libre:    "Conversación libre. Empezá vos con una pregunta abierta e interesante.",
+  asado:    "Rollenspiel: un asado con la familia uruguaya de la novia del usuario. Vos sos un familiar (elegí: suegro, suegra, cuñado...). Charla típica: comida, fútbol, la vida en Alemania, planes de la pareja.",
+  surf:     "Rollenspiel: el usuario entra a un surfshop en Zarautz (País Vasco). Vos sos el empleado. Alquiler de tabla y neopreno, condiciones del mar, spots para principiantes-intermedios.",
+  camping:  "Rollenspiel: el usuario llega con su furgoneta VW a un camping en la costa vasca. Vos sos el recepcionista. Check-in, precios, electricidad, duchas, cuántas noches.",
+  bar:      "Rollenspiel: un bar de pintxos en San Sebastián. Vos sos el camarero. Pedir, recomendar, pagar, un poco de charla.",
+  mercado:  "Rollenspiel: un mercado. Vos sos el vendedor. Comprar fruta y verdura, cantidades, precios, regateo amable.",
+  mate:     "Rollenspiel: una ronda de mate con amigos uruguayos. Vos sos un amigo cercano. Charla relajada sobre la vida, con expresiones bien uruguayas.",
+  sorpresa: "Elegí vos un escenario cotidiano sorpresa (taxi, farmacia, peluquería, vecino, llamada telefónica...) y arrancá directamente en situación.",
+};
+
+/* ---------- State & Storage ---------- */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("che_" + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { localStorage.setItem("che_" + k, JSON.stringify(v)); },
+};
+
+let settings = Object.assign({
+  apiKey: "", model: "claude-opus-5", level: "A2", variant: "uy",
+  recLang: "auto", voiceURI: "auto", tts: true,
+}, store.get("settings", {}));
+
+let errorLog = store.get("errors", []);   // [{dicho, mejor, tipo, nota, count, last}]
+let chat = { scenario: null, messages: [], busy: false };
+
+/* ---------- Views ---------- */
+function showView(name) {
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  document.getElementById("view-" + name).classList.add("active");
+  if (name === "home") renderHome();
+  if (name === "errors") renderErrors();
+  if (name === "settings") renderSettings();
+}
+
+/* ---------- Home ---------- */
+function renderHome() {
+  document.getElementById("var-uy").classList.toggle("on", settings.variant === "uy");
+  document.getElementById("var-es").classList.toggle("on", settings.variant === "es");
+  document.getElementById("home-model").textContent =
+    settings.model.includes("haiku") ? "· Haiku" : "· Opus";
+  const wrap = document.getElementById("scenario-cards");
+  wrap.innerHTML = "";
+  for (const s of SCENARIOS) {
+    const b = document.createElement("button");
+    b.className = "card";
+    b.innerHTML = `<span class="emoji">${s.emoji}</span><span class="t">${s.t}</span><span class="d">${s.d}</span>`;
+    b.onclick = () => startChat(s);
+    wrap.appendChild(b);
+  }
+}
+function setVariant(v) { settings.variant = v; store.set("settings", settings); renderHome(); }
+
+/* ---------- System-Prompt ---------- */
+function systemBlocks() {
+  const variantUy = settings.variant === "uy";
+  const variantText = variantUy
+    ? `VARIANTE: Español rioplatense (Uruguay).
+- Usá SIEMPRE el voseo: "vos tenés", "vos sos", "¿querés?", imperativo "hablá/vení/decí".
+- Usá "ustedes" (nunca "vosotros").
+- Vocabulario del Río de la Plata: che, ta, bo (con moderación), championes, bondi, laburo, plata, pila de.
+- Si el usuario usa "tú" o formas de España, corregilo suavemente hacia el voseo.`
+    : `VARIANTE: Español de España.
+- Usá "tú" y "vosotros" ("¿queréis?", "tenéis").
+- Vocabulario peninsular: vale, guay, currar, coche, móvil, zumo.
+- Contexto útil: el usuario viaja al País Vasco en octubre (surf, furgoneta, pintxos).`;
+
+  const stable = `Sos un tutor de conversación de español, cálido y con humor. El usuario es Kai, alemán, nivel ${settings.level}, y quiere sobre todo APRENDER A HABLAR. Su novia y la familia de ella son de Uruguay; en octubre viaja al País Vasco.
+
+${variantText}
+
+CÓMO CONVERSÁS:
+- Respuestas CORTAS: 1–3 frases, después una pregunta o un impulso para que el usuario hable más. El usuario tiene que hablar más que vos.
+- Adaptate al nivel ${settings.level}: frases simples, vocabulario frecuente. Si el usuario se traba, ofrecé la palabra que le falta.
+- Quedate en el personaje del escenario, pero si el usuario pide ayuda ("¿cómo se dice...?", auch auf Deutsch), ayudalo y seguí.
+- Nunca cambies al alemán en "respuesta", salvo una palabra entre paréntesis si es imprescindible.
+
+CORRECCIONES (campo "correcciones"):
+- Máximo 2 por turno, solo errores que valgan la pena (gramática, voseo, vocabulario falso). Ignorá tildes/typos irrelevantes y errores que no molestan la comunicación.
+- "dicho" = lo que dijo el usuario (corto), "mejor" = la forma correcta, "nota" = explicación BREVE en alemán (máx. 15 palabras), "tipo" = grammatik | voseo | vokabel | stil.
+- Si no hay nada que corregir: lista vacía. No inventes correcciones.`;
+
+  const blocks = [{ type: "text", text: stable, cache_control: { type: "ephemeral" } }];
+
+  const top = topErrors(8);
+  if (top.length) {
+    blocks.push({
+      type: "text",
+      text: "ERRORES FRECUENTES de este usuario (integrálos de vez en cuando en la conversación para practicar, sin señalarlo):\n" +
+        top.map(e => `- dice "${e.dicho}" en vez de "${e.mejor}"`).join("\n"),
+    });
+  }
+  return blocks;
+}
+
+function topErrors(n) {
+  return [...errorLog].sort((a, b) => b.count - a.count || b.last - a.last).slice(0, n);
+}
+
+/* ---------- API ---------- */
+const RESPONSE_SCHEMA = {
+  type: "object",
+  properties: {
+    respuesta: { type: "string", description: "Tu respuesta conversacional en español." },
+    correcciones: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          dicho: { type: "string" },
+          mejor: { type: "string" },
+          nota:  { type: "string" },
+          tipo:  { type: "string", enum: ["grammatik", "voseo", "vokabel", "stil"] },
+        },
+        required: ["dicho", "mejor", "nota", "tipo"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["respuesta", "correcciones"],
+  additionalProperties: false,
+};
+
+async function callClaude() {
+  const body = {
+    model: settings.model,
+    max_tokens: 4096,
+    system: systemBlocks(),
+    messages: chat.messages.slice(-24),
+    output_config: { format: { type: "json_schema", schema: RESPONSE_SCHEMA } },
+  };
+  if (!settings.model.includes("haiku")) {
+    body.output_config.effort = "low";   // schnelle Antworten im Gespräch
+  }
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": settings.apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    let msg = "HTTP " + res.status;
+    try { msg = (await res.json()).error.message || msg; } catch {}
+    if (res.status === 401) msg = "API-Key ungültig – in den Einstellungen prüfen.";
+    if (res.status === 429) msg = "Rate-Limit erreicht – kurz warten und nochmal.";
+    throw new Error(msg);
+  }
+  const data = await res.json();
+  if (data.stop_reason === "refusal") throw new Error("Anfrage wurde abgelehnt – bitte anders formulieren.");
+  if (data.stop_reason === "max_tokens") throw new Error("Antwort abgeschnitten – bitte nochmal senden.");
+  const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
+  if (!text) throw new Error("Leere Antwort erhalten.");
+  return JSON.parse(text);
+}
+
+/* ---------- Chat-Flow ---------- */
+function startChat(scenario) {
+  chat = { scenario, messages: [], busy: false };
+  document.getElementById("chat-title").textContent = scenario.emoji + " " + scenario.t;
+  document.getElementById("chat-log").innerHTML = "";
+  updateTtsBtn();
+  showView("chat");
+  // Kickoff: Szenario-Instruktion als erste User-Message (unsichtbar)
+  const variant = settings.variant === "uy" ? "rioplatense/uruguayo" : "de España";
+  chat.messages.push({
+    role: "user",
+    content: `[Inicio de sesión — no es un mensaje del usuario] Escenario: ${SCENARIO_PROMPTS[scenario.id]} Español ${variant}. Arrancá vos ahora con 1–2 frases.`,
+  });
+  runTurn();
+}
+
+function leaveChat() { stopSpeech(); stopRec(); showView("home"); }
+
+function sendUserText(text) {
+  text = text.trim();
+  if (!text || chat.busy) return;
+  addBubble("user", text);
+  chat.messages.push({ role: "user", content: text });
+  runTurn();
+}
+
+async function runTurn() {
+  chat.busy = true;
+  const typing = document.createElement("div");
+  typing.className = "typing"; typing.textContent = "…";
+  document.getElementById("chat-log").appendChild(typing);
+  scrollLog();
+  try {
+    const out = await callClaude();
+    typing.remove();
+    chat.messages.push({ role: "assistant", content: JSON.stringify(out) });
+    if (Array.isArray(out.correcciones) && out.correcciones.length) {
+      showCorrections(out.correcciones);
+      recordErrors(out.correcciones);
+    }
+    addBubble("bot", out.respuesta);
+    if (settings.tts) speak(out.respuesta);
+  } catch (e) {
+    typing.remove();
+    addSys("Fehler: " + e.message, true);
+    chat.messages.pop(); // letzten User-Turn zurücknehmen, damit Retry sauber ist
+  } finally {
+    chat.busy = false;
+  }
+}
+
+function showCorrections(list) {
+  const div = document.createElement("div");
+  div.className = "corr";
+  div.innerHTML = list.map(c =>
+    `<s>${esc(c.dicho)}</s> → <b>${esc(c.mejor)}</b><br><span style="opacity:.8">${esc(c.nota)}</span>`
+  ).join("<hr style='border:none;border-top:1px solid var(--corr-border);margin:6px 0'>");
+  document.getElementById("chat-log").appendChild(div);
+  scrollLog();
+}
+
+function recordErrors(list) {
+  for (const c of list) {
+    const key = (c.dicho || "").toLowerCase().trim();
+    if (!key) continue;
+    const hit = errorLog.find(e => e.dicho.toLowerCase().trim() === key);
+    if (hit) { hit.count++; hit.last = Date.now(); hit.mejor = c.mejor; hit.nota = c.nota; }
+    else errorLog.push({ dicho: c.dicho, mejor: c.mejor, nota: c.nota, tipo: c.tipo, count: 1, last: Date.now() });
+  }
+  errorLog = errorLog.slice(-200);
+  store.set("errors", errorLog);
+}
+
+function addBubble(kind, text) {
+  const div = document.createElement("div");
+  div.className = "msg " + kind;
+  div.textContent = text;
+  if (kind === "bot" && "speechSynthesis" in window) {
+    const btn = document.createElement("button");
+    btn.className = "replay"; btn.textContent = "🔊 nochmal";
+    btn.onclick = () => speak(text);
+    div.appendChild(btn);
+  }
+  document.getElementById("chat-log").appendChild(div);
+  scrollLog();
+}
+function addSys(text, isErr) {
+  const div = document.createElement("div");
+  div.className = "sys" + (isErr ? " err" : "");
+  div.textContent = text;
+  document.getElementById("chat-log").appendChild(div);
+  scrollLog();
+}
+function scrollLog() {
+  const m = document.getElementById("chat-main");
+  requestAnimationFrame(() => { m.scrollTop = m.scrollHeight; });
+}
+function esc(s) { const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
+
+/* ---------- Spracherkennung ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, recActive = false;
+
+function recLang() {
+  if (settings.recLang !== "auto") return settings.recLang;
+  return settings.variant === "uy" ? "es-MX" : "es-ES";
+}
+
+function startRec() {
+  if (!SR) { addSys("Spracherkennung wird von diesem Browser nicht unterstützt – bitte tippen.", true); return; }
+  if (recActive) { stopRec(); return; }
+  stopSpeech();
+  rec = new SR();
+  rec.lang = recLang();
+  rec.interimResults = true;
+  rec.continuous = false;
+  let finalText = "";
+  rec.onresult = (ev) => {
+    let interim = "";
+    for (let i = ev.resultIndex; i < ev.results.length; i++) {
+      const r = ev.results[i];
+      if (r.isFinal) finalText += r[0].transcript;
+      else interim += r[0].transcript;
+    }
+    document.getElementById("interim").textContent = finalText + interim;
+  };
+  rec.onerror = (ev) => {
+    recActive = false; updateMic();
+    document.getElementById("interim").textContent = "";
+    if (ev.error === "not-allowed") addSys("Mikrofon-Zugriff verweigert – in Safari-Einstellungen erlauben.", true);
+    else if (ev.error !== "aborted" && ev.error !== "no-speech") addSys("Mikrofon-Fehler: " + ev.error, true);
+  };
+  rec.onend = () => {
+    recActive = false; updateMic();
+    document.getElementById("interim").textContent = "";
+    if (finalText.trim()) sendUserText(finalText);
+  };
+  recActive = true; updateMic();
+  rec.start();
+}
+function stopRec() { if (rec && recActive) { try { rec.stop(); } catch {} } recActive = false; updateMic(); }
+function updateMic() { document.getElementById("mic").classList.toggle("rec", recActive); }
+
+/* ---------- Text-to-Speech ---------- */
+let voices = [];
+function loadVoices() { voices = window.speechSynthesis ? speechSynthesis.getVoices() : []; }
+if ("speechSynthesis" in window) {
+  loadVoices();
+  speechSynthesis.onvoiceschanged = loadVoices;
+}
+function pickVoice() {
+  if (!voices.length) loadVoices();
+  if (settings.voiceURI !== "auto") {
+    const v = voices.find(v => v.voiceURI === settings.voiceURI);
+    if (v) return v;
+  }
+  const prefs = settings.variant === "uy"
+    ? ["es-MX", "es-US", "es-AR", "es-419", "es-ES", "es"]
+    : ["es-ES", "es-MX", "es-US", "es"];
+  for (const p of prefs) {
+    const v = voices.find(v => v.lang && v.lang.toLowerCase().startsWith(p.toLowerCase()));
+    if (v) return v;
+  }
+  return null;
+}
+function speak(text) {
+  if (!("speechSynthesis" in window)) return;
+  stopSpeech();
+  const u = new SpeechSynthesisUtterance(text);
+  const v = pickVoice();
+  if (v) { u.voice = v; u.lang = v.lang; } else u.lang = "es-ES";
+  u.rate = 0.95;
+  speechSynthesis.speak(u);
+}
+function stopSpeech() { if ("speechSynthesis" in window) speechSynthesis.cancel(); }
+function toggleTts() {
+  settings.tts = !settings.tts; store.set("settings", settings);
+  if (!settings.tts) stopSpeech();
+  updateTtsBtn();
+}
+function updateTtsBtn() {
+  document.getElementById("tts-toggle").textContent = settings.tts ? "🔊" : "🔇";
+}
+
+/* ---------- Fehler-Ansicht ---------- */
+function renderErrors() {
+  const list = document.getElementById("err-list");
+  const empty = document.getElementById("err-empty");
+  list.innerHTML = "";
+  const items = topErrors(200);
+  empty.style.display = items.length ? "none" : "block";
+  for (const e of items) {
+    const div = document.createElement("div");
+    div.className = "err-item";
+    div.innerHTML = `<span class="count">${e.count}×</span><s>${esc(e.dicho)}</s> → <b>${esc(e.mejor)}</b><br><span class="nota">${esc(e.nota || "")}</span>`;
+    list.appendChild(div);
+  }
+}
+function clearErrors() {
+  if (!confirm("Wirklich alle gesammelten Fehler löschen?")) return;
+  errorLog = []; store.set("errors", errorLog);
+  showView("home");
+}
+
+/* ---------- Settings ---------- */
+function renderSettings() {
+  document.getElementById("set-model").value = settings.model;
+  document.getElementById("set-level").value = settings.level;
+  document.getElementById("set-reclang").value = settings.recLang;
+  document.getElementById("set-key").value = settings.apiKey;
+  const sel = document.getElementById("set-voice");
+  sel.innerHTML = '<option value="auto">Automatisch</option>';
+  loadVoices();
+  for (const v of voices.filter(v => v.lang && v.lang.toLowerCase().startsWith("es"))) {
+    const o = document.createElement("option");
+    o.value = v.voiceURI; o.textContent = `${v.name} (${v.lang})`;
+    sel.appendChild(o);
+  }
+  sel.value = settings.voiceURI;
+  if (sel.value !== settings.voiceURI) sel.value = "auto";
+}
+function saveSettings() {
+  settings.model = document.getElementById("set-model").value;
+  settings.level = document.getElementById("set-level").value;
+  settings.recLang = document.getElementById("set-reclang").value;
+  settings.voiceURI = document.getElementById("set-voice").value;
+  settings.apiKey = document.getElementById("set-key").value.trim();
+  store.set("settings", settings);
+  showView("home");
+}
+
+/* ---------- Composer ---------- */
+document.getElementById("send").onclick = () => {
+  const inp = document.getElementById("input");
+  sendUserText(inp.value); inp.value = ""; inp.style.height = "auto";
+};
+document.getElementById("input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    document.getElementById("send").click();
+  }
+});
+document.getElementById("input").addEventListener("input", function () {
+  this.style.height = "auto"; this.style.height = Math.min(this.scrollHeight, 110) + "px";
+});
+document.getElementById("mic").onclick = startRec;
+
+/* ---------- Setup ---------- */
+document.getElementById("setup-save").onclick = () => {
+  const key = document.getElementById("setup-key").value.trim();
+  if (!key) { alert("Bitte API-Key eintragen."); return; }
+  settings.apiKey = key; store.set("settings", settings);
+  showView("home");
+};
+
+/* ---------- Init ---------- */
+if (!SR) document.getElementById("mic").style.display = "none";
+showView(settings.apiKey ? "home" : "setup");
+</script>
+</body>
+</html>
