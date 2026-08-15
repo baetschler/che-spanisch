@@ -1,6 +1,6 @@
 # ¡Che! — Spanisch-Sprechtrainer
 
-Version 0.3.0
+Version 0.4.0
 
 Eine Single-File-Web-App (`index.html`) zum Spanisch-Sprechen-Üben, gebaut für Kai:
 Rioplatense (Voseo, Uruguay) als Standard, Spanien-Modus zuschaltbar.
