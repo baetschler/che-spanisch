@@ -92,6 +92,17 @@
   .card .d { font-size: 12px; color: var(--muted); line-height: 1.3; }
   .home-note { margin-top: 18px; font-size: 12px; color: var(--muted); text-align: center; line-height: 1.5; }
   .section-h { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin: 18px 2px 8px; }
+  .resume-item {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 10px 12px; margin-bottom: 8px; cursor: pointer;
+    font-family: inherit; color: var(--ink); text-align: left; box-shadow: var(--shadow);
+  }
+  .resume-item .re { font-size: 20px; flex: none; }
+  .resume-item .rt { flex: 1; min-width: 0; }
+  .resume-item .rt .t1 { font-weight: 650; font-size: 14px; }
+  .resume-item .rt .t2 { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .resume-item .rx { flex: none; border: none; background: none; color: var(--muted); font-size: 16px; padding: 6px; cursor: pointer; }
 
   /* ---------- Chat ---------- */
   #chat-log { display: flex; flex-direction: column; gap: 10px; padding-bottom: 8px; }
@@ -135,7 +146,7 @@
   /* ---------- Forms / settings ---------- */
   .field { margin-bottom: 16px; }
   .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
-  .field input, .field select {
+  .field input, .field select, .field textarea {
     width: 100%; padding: 11px 12px; font-size: 16px;
     border: 1px solid var(--border); border-radius: 10px;
     background: var(--surface); color: var(--ink); font-family: inherit;
@@ -198,6 +209,11 @@
       <button id="var-uy" onclick="setVariant('uy')">🇺🇾 Rioplatense</button>
       <button id="var-es" onclick="setVariant('es')">🇪🇸 España</button>
     </div>
+    <div id="resume-sec" style="display:none">
+      <div class="section-h">Fortsetzen</div>
+      <div id="resume-list"></div>
+    </div>
+    <div class="section-h">Neues Gespräch</div>
     <div class="cards" id="scenario-cards"></div>
     <div class="section-h">Gezielt üben</div>
     <div class="cards" id="training-cards"></div>
@@ -283,12 +299,17 @@
       <div class="hint">💡 Deutlich bessere Stimmen: iPhone-Einstellungen → Bedienungshilfen → Gesprochene Inhalte → Stimmen → Spanisch → eine „Premium"- oder „Erweitert"-Stimme laden (z.B. Paulina für Lateinamerika, Mónica für Spanien). Danach taucht sie hier auf.</div>
     </div>
     <div class="field">
+      <label for="set-about">Über dich</label>
+      <textarea id="set-about" rows="4"></textarea>
+      <div class="hint">Kennt der Tutor immer – je konkreter (Leute, Hobbys, Pläne), desto persönlicher die Gespräche.</div>
+    </div>
+    <div class="field">
       <label for="set-key">API-Key</label>
       <input id="set-key" type="password" autocomplete="off">
     </div>
     <button class="btn" onclick="saveSettings()">Speichern</button>
     <button class="btn danger" onclick="clearErrors()">Fehler-Liste leeren</button>
-    <div class="version">¡Che! v0.2.0</div>
+    <div class="version">¡Che! v0.3.0</div>
   </main>
 </div>
 
@@ -299,7 +320,7 @@
    Eine Datei, kein Build, kein Server außer api.anthropic.com.
    ===================================================================== */
 
-const APP_VERSION = "0.2.0";
+const APP_VERSION = "0.3.0";
 const API_URL = "https://api.anthropic.com/v1/messages";
 
 /* ---------- Szenarien ---------- */
@@ -329,7 +350,7 @@ const SCENARIO_PROMPTS = {
   mate:     "Rollenspiel: una ronda de mate con amigos uruguayos. Vos sos un amigo cercano. Charla relajada sobre la vida, con expresiones bien uruguayas.",
   sorpresa: "Elegí vos un escenario cotidiano sorpresa (taxi, farmacia, peluquería, vecino, llamada telefónica...) y arrancá directamente en situación.",
   training: `MODO ENTRENAMIENTO DE GRAMÁTICA. En el system prompt tenés la lista de errores del usuario. Analizála e identificá el PATRÓN más importante (p.ej. ser/estar, conjugación del voseo, pretérito vs. imperfecto, por/para). Si la lista está vacía o es corta, elegí un patrón típico de nivel A2. Arrancá diciendo en 1 frase qué patrón van a entrenar (nota breve en alemán entre paréntesis está bien). Después, ejercicios de a UNO: traducir una frase corta del alemán, completar un hueco, o corregir una frase con error. Esperá la respuesta, evaluála (usá "correcciones" si hay error), dale feedback breve y seguí con el próximo. Subí la dificultad de a poco. Cada 5 ejercicios: mini-balance y preguntá si seguir con este patrón u otro.`,
-  vocab: `MODO VOCABULARIO. Entrenás palabras y expresiones útiles para el usuario: familia uruguaya, mate/asado, surf, furgoneta/camping, comida, viaje. En el system prompt puede haber una lista de palabras ya vistas: repasá primero 2-3 de esas, después introducí palabras nuevas (máx. 4-5 por sesión). De a UNA: preguntá alemán→español o español→alemán, o pedí que use la palabra en una frase propia. Evaluá, feedback breve, siguiente. CADA palabra nueva que introduzcas, agregala también al campo "vocabulario" como {es, de}. Palabras ya repasadas NO van en "vocabulario".`,
+  vocab: `MODO VOCABULARIO. Entrenás palabras y expresiones útiles para el usuario. En el system prompt puede haber una lista de palabras ya vistas — muchas vienen de sus propias conversaciones (palabras que no sabía): esas son las MÁS importantes, repasálas primero. Después introducí palabras nuevas de sus contextos (familia uruguaya, mate/asado, surf, furgoneta/camping, comida, viaje; máx. 4-5 nuevas por sesión). De a UNA: preguntá alemán→español o español→alemán, o pedí que use la palabra en una frase propia. Evaluá, feedback breve, siguiente. CADA palabra nueva que introduzcas, agregala también al campo "vocabulario" como {es, de}. Palabras ya repasadas NO van en "vocabulario".`,
 };
 
 /* ---------- State & Storage ---------- */
@@ -341,11 +362,31 @@ const store = {
 let settings = Object.assign({
   apiKey: "", model: "claude-opus-5", level: "A2", variant: "uy",
   recLang: "auto", voiceURI: "auto", tts: true, pauseSec: "5",
+  aboutMe: "Selbständiger AI-Berater aus München. Freundin aus Uruguay, ihre Familie spricht nur Spanisch. Hobbys: Surfen, Biken, Padel, VW-Bus-Reisen. Im Oktober Surftrip ins Baskenland.",
 }, store.get("settings", {}));
 
 let errorLog = store.get("errors", []);   // [{dicho, mejor, tipo, nota, count, last}]
 let vocabLog = store.get("vocab", []);    // [{es, de, added}]
-let chat = { scenario: null, messages: [], busy: false };
+let sessions = store.get("sessions", []); // [{id, scenarioId, emoji, title, messages, updated}]
+let chat = { sessionId: null, scenario: null, messages: [], busy: false };
+
+function saveSession() {
+  if (!chat.sessionId) return;
+  const s = {
+    id: chat.sessionId, scenarioId: chat.scenario.id,
+    emoji: chat.scenario.emoji, title: chat.scenario.t,
+    messages: chat.messages, updated: Date.now(),
+  };
+  sessions = sessions.filter(x => x.id !== chat.sessionId);
+  sessions.unshift(s);
+  sessions = sessions.slice(0, 12);
+  store.set("sessions", sessions);
+}
+function deleteSession(id) {
+  sessions = sessions.filter(x => x.id !== id);
+  store.set("sessions", sessions);
+  renderHome();
+}
 
 /* ---------- Views ---------- */
 function showView(name) {
@@ -375,6 +416,42 @@ function renderHome() {
   };
   fill("scenario-cards", SCENARIOS);
   fill("training-cards", TRAINING_MODES);
+  renderResume();
+}
+
+function renderResume() {
+  const sec = document.getElementById("resume-sec");
+  const list = document.getElementById("resume-list");
+  list.innerHTML = "";
+  sec.style.display = sessions.length ? "block" : "none";
+  for (const s of sessions.slice(0, 5)) {
+    // letzter sichtbarer Gesprächsinhalt als Vorschau
+    let preview = "";
+    for (let i = s.messages.length - 1; i >= 0; i--) {
+      const m = s.messages[i];
+      if (m.role === "assistant") {
+        try { preview = JSON.parse(m.content).respuesta; } catch { preview = String(m.content); }
+        break;
+      }
+    }
+    const div = document.createElement("div");
+    div.className = "resume-item";
+    div.onclick = () => resumeSession(s.id);
+    div.innerHTML = `<span class="re">${s.emoji}</span>
+      <span class="rt"><span class="t1">${esc(s.title)} · ${relTime(s.updated)}</span><br><span class="t2">${esc(preview)}</span></span>`;
+    const x = document.createElement("button");
+    x.className = "rx"; x.textContent = "✕"; x.title = "Löschen";
+    x.onclick = (ev) => { ev.stopPropagation(); if (confirm("Gespräch löschen?")) deleteSession(s.id); };
+    div.appendChild(x);
+    list.appendChild(div);
+  }
+}
+
+function relTime(t) {
+  const d = Date.now() - t;
+  if (d < 3600e3) return Math.max(1, Math.round(d / 60e3)) + " Min.";
+  if (d < 86400e3) return Math.round(d / 3600e3) + " Std.";
+  return Math.round(d / 86400e3) + " Tg.";
 }
 function setVariant(v) { settings.variant = v; store.set("settings", settings); renderHome(); }
 
@@ -392,7 +469,10 @@ function systemBlocks() {
 - Vocabulario peninsular: vale, guay, currar, coche, móvil, zumo.
 - Contexto útil: el usuario viaja al País Vasco en octubre (surf, furgoneta, pintxos).`;
 
-  const stable = `Sos un tutor de conversación de español, cálido y con humor. El usuario es Kai, alemán, nivel ${settings.level}, y quiere sobre todo APRENDER A HABLAR. Su novia y la familia de ella son de Uruguay; en octubre viaja al País Vasco.
+  const stable = `Sos un tutor de conversación de español, cálido y con humor. El usuario es Kai, alemán, nivel ${settings.level}, y quiere sobre todo APRENDER A HABLAR.
+
+SOBRE KAI (usá esto para que la conversación sea personal y natural):
+${settings.aboutMe || "Su novia y la familia de ella son de Uruguay; en octubre viaja al País Vasco."}
 
 ${variantText}
 
@@ -405,7 +485,11 @@ CÓMO CONVERSÁS:
 CORRECCIONES (campo "correcciones"):
 - Máximo 2 por turno, solo errores que valgan la pena (gramática, voseo, vocabulario falso). Ignorá tildes/typos irrelevantes y errores que no molestan la comunicación.
 - "dicho" = lo que dijo el usuario (corto), "mejor" = la forma correcta, "nota" = explicación BREVE en alemán (máx. 15 palabras), "tipo" = grammatik | voseo | vokabel | stil.
-- Si no hay nada que corregir: lista vacía. No inventes correcciones.`;
+- Si no hay nada que corregir: lista vacía. No inventes correcciones.
+
+VOCABULARIO NUEVO (campo "vocabulario") — en TODOS los modos:
+- Si el usuario no sabía una palabra (preguntó "¿cómo se dice...?" o "wie sagt man..."), la dijo en alemán, o usó una palabra claramente equivocada: agregá la palabra correcta como {es, de} al campo "vocabulario". También si una corrección es de tipo "vokabel".
+- Máximo 3 por turno. Si no pasó nada de eso: lista vacía. Así la app arma su mazo de vocabulario personal a partir de las conversaciones.`;
 
   const blocks = [{ type: "text", text: stable, cache_control: { type: "ephemeral" } }];
   const mode = chat.scenario ? chat.scenario.id : null;
@@ -517,7 +601,7 @@ async function callClaude() {
 
 /* ---------- Chat-Flow ---------- */
 function startChat(scenario) {
-  chat = { scenario, messages: [], busy: false };
+  chat = { sessionId: "s" + Date.now(), scenario, messages: [], busy: false };
   document.getElementById("chat-title").textContent = scenario.emoji + " " + scenario.t;
   document.getElementById("chat-log").innerHTML = "";
   updateTtsBtn();
@@ -531,7 +615,34 @@ function startChat(scenario) {
   runTurn();
 }
 
-function leaveChat() { stopSpeech(); stopRec(); showView("home"); }
+function resumeSession(id) {
+  const s = sessions.find(x => x.id === id);
+  if (!s) return;
+  const scenario = SCENARIOS.concat(TRAINING_MODES).find(x => x.id === s.scenarioId)
+    || { id: s.scenarioId, emoji: s.emoji, t: s.title };
+  chat = { sessionId: s.id, scenario, messages: [...s.messages], busy: false };
+  document.getElementById("chat-title").textContent = s.emoji + " " + s.title;
+  const log = document.getElementById("chat-log");
+  log.innerHTML = "";
+  updateTtsBtn();
+  showView("chat");
+  // Verlauf wieder aufbauen (Kickoff-Systemnachricht überspringen)
+  for (const m of s.messages) {
+    if (m.role === "user") {
+      if (typeof m.content === "string" && m.content.startsWith("[Inicio")) continue;
+      addBubble("user", m.content);
+    } else if (m.role === "assistant") {
+      try {
+        const out = JSON.parse(m.content);
+        if (Array.isArray(out.correcciones) && out.correcciones.length) showCorrections(out.correcciones);
+        addBubble("bot", out.respuesta, true);
+      } catch { addBubble("bot", m.content, true); }
+    }
+  }
+  addSys("Fortgesetzt – sprich einfach weiter.");
+}
+
+function leaveChat() { stopSpeech(); stopRec(); saveSession(); showView("home"); }
 
 function sendUserText(text) {
   text = text.trim();
@@ -557,6 +668,7 @@ async function runTurn() {
     }
     if (Array.isArray(out.vocabulario) && out.vocabulario.length) recordVocab(out.vocabulario);
     addBubble("bot", out.respuesta);
+    saveSession();
     if (settings.tts) speak(out.respuesta);
   } catch (e) {
     typing.remove();
@@ -763,6 +875,7 @@ function renderSettings() {
   document.getElementById("set-level").value = settings.level;
   document.getElementById("set-reclang").value = settings.recLang;
   document.getElementById("set-pause").value = settings.pauseSec;
+  document.getElementById("set-about").value = settings.aboutMe;
   document.getElementById("set-key").value = settings.apiKey;
   const sel = document.getElementById("set-voice");
   sel.innerHTML = '<option value="auto">Automatisch</option>';
@@ -780,6 +893,7 @@ function saveSettings() {
   settings.level = document.getElementById("set-level").value;
   settings.recLang = document.getElementById("set-reclang").value;
   settings.pauseSec = document.getElementById("set-pause").value;
+  settings.aboutMe = document.getElementById("set-about").value.trim();
   settings.voiceURI = document.getElementById("set-voice").value;
   settings.apiKey = document.getElementById("set-key").value.trim();
   store.set("settings", settings);

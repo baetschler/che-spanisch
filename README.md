@@ -1,6 +1,6 @@
 # ¡Che! — Spanisch-Sprechtrainer
 
-Version 0.2.0
+Version 0.3.0
 
 Eine Single-File-Web-App (`index.html`) zum Spanisch-Sprechen-Üben, gebaut für Kai:
 Rioplatense (Voseo, Uruguay) als Standard, Spanien-Modus zuschaltbar.
@@ -12,6 +12,9 @@ Rioplatense (Voseo, Uruguay) als Standard, Spanien-Modus zuschaltbar.
 - **Voseo-Modus** 🇺🇾 / **España-Modus** 🇪🇸 umschaltbar
 - **Korrekturen**: max. 2 pro Turn, dezent als Chip, Erklärung auf Deutsch
 - **Fehler-Gedächtnis**: wiederkehrende Fehler landen in localStorage und fließen in künftige Gespräche ein (der Tutor baut sie unauffällig wieder ein)
+- **Konversation → Übungen**: Grammatikfehler speisen das 🏋️ Grammatik-Training (Muster-Analyse), fehlende/falsche Wörter aus Gesprächen landen automatisch im 🃏 Vokabel-Deck
+- **Gespräche fortsetzen**: die letzten 12 Unterhaltungen werden lokal gespeichert und sind vom Home-Screen aus fortsetzbar
+- **„Über dich"**: frei editierbares Profil in den Einstellungen, das der Tutor immer kennt
 - **Modelle**: Claude Opus 5 (Standard) oder Haiku 4.5 (schnell/günstig), umschaltbar
 
 ## Technik
