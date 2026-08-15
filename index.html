@@ -91,6 +91,7 @@
   .card .t { font-weight: 650; font-size: 14px; }
   .card .d { font-size: 12px; color: var(--muted); line-height: 1.3; }
   .home-note { margin-top: 18px; font-size: 12px; color: var(--muted); text-align: center; line-height: 1.5; }
+  .section-h { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin: 18px 2px 8px; }
 
   /* ---------- Chat ---------- */
   #chat-log { display: flex; flex-direction: column; gap: 10px; padding-bottom: 8px; }
@@ -198,6 +199,8 @@
       <button id="var-es" onclick="setVariant('es')">🇪🇸 España</button>
     </div>
     <div class="cards" id="scenario-cards"></div>
+    <div class="section-h">Gezielt üben</div>
+    <div class="cards" id="training-cards"></div>
     <div class="home-note">Tippe ein Szenario und sprich einfach los.<br>Korrekturen erscheinen dezent unter deinen Sätzen.</div>
   </main>
 </div>
@@ -265,8 +268,19 @@
       <div class="hint">Falls dich das Mikrofon schlecht versteht, probier eine andere Variante.</div>
     </div>
     <div class="field">
+      <label for="set-pause">Sprechpause bis Senden</label>
+      <select id="set-pause">
+        <option value="3">3 Sekunden</option>
+        <option value="5">5 Sekunden</option>
+        <option value="8">8 Sekunden – viel Zeit zum Denken</option>
+        <option value="manual">Erst wenn ich aufs ✔️ tippe</option>
+      </select>
+      <div class="hint">So lange darfst du still sein, bevor deine Antwort abgeschickt wird. Zweiter Tipp aufs Mikro sendet immer sofort.</div>
+    </div>
+    <div class="field">
       <label for="set-voice">Vorlese-Stimme</label>
       <select id="set-voice"><option value="auto">Automatisch</option></select>
+      <div class="hint">💡 Deutlich bessere Stimmen: iPhone-Einstellungen → Bedienungshilfen → Gesprochene Inhalte → Stimmen → Spanisch → eine „Premium"- oder „Erweitert"-Stimme laden (z.B. Paulina für Lateinamerika, Mónica für Spanien). Danach taucht sie hier auf.</div>
     </div>
     <div class="field">
       <label for="set-key">API-Key</label>
@@ -274,7 +288,7 @@
     </div>
     <button class="btn" onclick="saveSettings()">Speichern</button>
     <button class="btn danger" onclick="clearErrors()">Fehler-Liste leeren</button>
-    <div class="version">¡Che! v0.1.0</div>
+    <div class="version">¡Che! v0.2.0</div>
   </main>
 </div>
 
@@ -285,10 +299,15 @@
    Eine Datei, kein Build, kein Server außer api.anthropic.com.
    ===================================================================== */
 
-const APP_VERSION = "0.1.0";
+const APP_VERSION = "0.2.0";
 const API_URL = "https://api.anthropic.com/v1/messages";
 
 /* ---------- Szenarien ---------- */
+const TRAINING_MODES = [
+  { id: "training", emoji: "🏋️", t: "Grammatik-Training", d: "Übungen zu deinen Fehler-Mustern" },
+  { id: "vocab",    emoji: "🃏", t: "Vokabeln",           d: "Neue Wörter lernen & wiederholen" },
+];
+
 const SCENARIOS = [
   { id: "libre",    emoji: "💬", t: "Frei quatschen",     d: "Ohne Skript, worüber du willst" },
   { id: "asado",    emoji: "🥩", t: "Asado mit der Familie", d: "Smalltalk mit den Suegros aus Uruguay" },
@@ -309,6 +328,8 @@ const SCENARIO_PROMPTS = {
   mercado:  "Rollenspiel: un mercado. Vos sos el vendedor. Comprar fruta y verdura, cantidades, precios, regateo amable.",
   mate:     "Rollenspiel: una ronda de mate con amigos uruguayos. Vos sos un amigo cercano. Charla relajada sobre la vida, con expresiones bien uruguayas.",
   sorpresa: "Elegí vos un escenario cotidiano sorpresa (taxi, farmacia, peluquería, vecino, llamada telefónica...) y arrancá directamente en situación.",
+  training: `MODO ENTRENAMIENTO DE GRAMÁTICA. En el system prompt tenés la lista de errores del usuario. Analizála e identificá el PATRÓN más importante (p.ej. ser/estar, conjugación del voseo, pretérito vs. imperfecto, por/para). Si la lista está vacía o es corta, elegí un patrón típico de nivel A2. Arrancá diciendo en 1 frase qué patrón van a entrenar (nota breve en alemán entre paréntesis está bien). Después, ejercicios de a UNO: traducir una frase corta del alemán, completar un hueco, o corregir una frase con error. Esperá la respuesta, evaluála (usá "correcciones" si hay error), dale feedback breve y seguí con el próximo. Subí la dificultad de a poco. Cada 5 ejercicios: mini-balance y preguntá si seguir con este patrón u otro.`,
+  vocab: `MODO VOCABULARIO. Entrenás palabras y expresiones útiles para el usuario: familia uruguaya, mate/asado, surf, furgoneta/camping, comida, viaje. En el system prompt puede haber una lista de palabras ya vistas: repasá primero 2-3 de esas, después introducí palabras nuevas (máx. 4-5 por sesión). De a UNA: preguntá alemán→español o español→alemán, o pedí que use la palabra en una frase propia. Evaluá, feedback breve, siguiente. CADA palabra nueva que introduzcas, agregala también al campo "vocabulario" como {es, de}. Palabras ya repasadas NO van en "vocabulario".`,
 };
 
 /* ---------- State & Storage ---------- */
@@ -319,10 +340,11 @@ const store = {
 
 let settings = Object.assign({
   apiKey: "", model: "claude-opus-5", level: "A2", variant: "uy",
-  recLang: "auto", voiceURI: "auto", tts: true,
+  recLang: "auto", voiceURI: "auto", tts: true, pauseSec: "5",
 }, store.get("settings", {}));
 
 let errorLog = store.get("errors", []);   // [{dicho, mejor, tipo, nota, count, last}]
+let vocabLog = store.get("vocab", []);    // [{es, de, added}]
 let chat = { scenario: null, messages: [], busy: false };
 
 /* ---------- Views ---------- */
@@ -340,15 +362,19 @@ function renderHome() {
   document.getElementById("var-es").classList.toggle("on", settings.variant === "es");
   document.getElementById("home-model").textContent =
     settings.model.includes("haiku") ? "· Haiku" : "· Opus";
-  const wrap = document.getElementById("scenario-cards");
-  wrap.innerHTML = "";
-  for (const s of SCENARIOS) {
-    const b = document.createElement("button");
-    b.className = "card";
-    b.innerHTML = `<span class="emoji">${s.emoji}</span><span class="t">${s.t}</span><span class="d">${s.d}</span>`;
-    b.onclick = () => startChat(s);
-    wrap.appendChild(b);
-  }
+  const fill = (elId, list) => {
+    const wrap = document.getElementById(elId);
+    wrap.innerHTML = "";
+    for (const s of list) {
+      const b = document.createElement("button");
+      b.className = "card";
+      b.innerHTML = `<span class="emoji">${s.emoji}</span><span class="t">${s.t}</span><span class="d">${s.d}</span>`;
+      b.onclick = () => startChat(s);
+      wrap.appendChild(b);
+    }
+  };
+  fill("scenario-cards", SCENARIOS);
+  fill("training-cards", TRAINING_MODES);
 }
 function setVariant(v) { settings.variant = v; store.set("settings", settings); renderHome(); }
 
@@ -382,14 +408,35 @@ CORRECCIONES (campo "correcciones"):
 - Si no hay nada que corregir: lista vacía. No inventes correcciones.`;
 
   const blocks = [{ type: "text", text: stable, cache_control: { type: "ephemeral" } }];
+  const mode = chat.scenario ? chat.scenario.id : null;
 
-  const top = topErrors(8);
-  if (top.length) {
+  if (mode === "training") {
+    const all = topErrors(30);
     blocks.push({
       type: "text",
-      text: "ERRORES FRECUENTES de este usuario (integrálos de vez en cuando en la conversación para practicar, sin señalarlo):\n" +
-        top.map(e => `- dice "${e.dicho}" en vez de "${e.mejor}"`).join("\n"),
+      text: all.length
+        ? "LISTA COMPLETA DE ERRORES del usuario (base para el entrenamiento):\n" +
+          all.map(e => `- "${e.dicho}" → "${e.mejor}" (${e.tipo}${e.nota ? ": " + e.nota : ""}, ${e.count}×)`).join("\n")
+        : "El usuario todavía no tiene errores registrados — elegí un patrón típico de nivel " + settings.level + ".",
     });
+  } else if (mode === "vocab") {
+    const seen = vocabLog.slice(-60);
+    if (seen.length) {
+      blocks.push({
+        type: "text",
+        text: "PALABRAS YA VISTAS (repasá algunas antes de introducir nuevas):\n" +
+          seen.map(v => `- ${v.es} = ${v.de}`).join("\n"),
+      });
+    }
+  } else {
+    const top = topErrors(8);
+    if (top.length) {
+      blocks.push({
+        type: "text",
+        text: "ERRORES FRECUENTES de este usuario (integrálos de vez en cuando en la conversación para practicar, sin señalarlo):\n" +
+          top.map(e => `- dice "${e.dicho}" en vez de "${e.mejor}"`).join("\n"),
+      });
+    }
   }
   return blocks;
 }
@@ -417,8 +464,18 @@ const RESPONSE_SCHEMA = {
         additionalProperties: false,
       },
     },
+    vocabulario: {
+      type: "array",
+      description: "Solo en modo vocabulario: palabras NUEVAS introducidas en este turno. Si no, lista vacía.",
+      items: {
+        type: "object",
+        properties: { es: { type: "string" }, de: { type: "string" } },
+        required: ["es", "de"],
+        additionalProperties: false,
+      },
+    },
   },
-  required: ["respuesta", "correcciones"],
+  required: ["respuesta", "correcciones", "vocabulario"],
   additionalProperties: false,
 };
 
@@ -498,6 +555,7 @@ async function runTurn() {
       showCorrections(out.correcciones);
       recordErrors(out.correcciones);
     }
+    if (Array.isArray(out.vocabulario) && out.vocabulario.length) recordVocab(out.vocabulario);
     addBubble("bot", out.respuesta);
     if (settings.tts) speak(out.respuesta);
   } catch (e) {
@@ -529,6 +587,18 @@ function recordErrors(list) {
   }
   errorLog = errorLog.slice(-200);
   store.set("errors", errorLog);
+}
+
+function recordVocab(list) {
+  for (const v of list) {
+    const key = (v.es || "").toLowerCase().trim();
+    if (!key) continue;
+    if (!vocabLog.some(x => x.es.toLowerCase().trim() === key)) {
+      vocabLog.push({ es: v.es, de: v.de, added: Date.now() });
+    }
+  }
+  vocabLog = vocabLog.slice(-300);
+  store.set("vocab", vocabLog);
 }
 
 function addBubble(kind, text) {
@@ -566,31 +636,41 @@ function recLang() {
   return settings.variant === "uy" ? "es-MX" : "es-ES";
 }
 
+let silenceTimer = null;
+
 function startRec() {
   if (!SR) { addSys("Spracherkennung wird von diesem Browser nicht unterstützt – bitte tippen.", true); return; }
-  if (recActive) { stopRec(); return; }
+  if (recActive) { stopRec(); return; }   // zweiter Tipp aufs Mikro = fertig, senden
   stopSpeech();
   rec = new SR();
   rec.lang = recLang();
   rec.interimResults = true;
-  rec.continuous = false;
+  rec.continuous = true;   // nicht bei der ersten Pause abbrechen
   let finalText = "";
+  const resetSilence = () => {
+    clearTimeout(silenceTimer);
+    if (settings.pauseSec === "manual") return;
+    silenceTimer = setTimeout(() => stopRec(), Number(settings.pauseSec) * 1000);
+  };
   rec.onresult = (ev) => {
     let interim = "";
     for (let i = ev.resultIndex; i < ev.results.length; i++) {
       const r = ev.results[i];
-      if (r.isFinal) finalText += r[0].transcript;
+      if (r.isFinal) finalText += r[0].transcript + " ";
       else interim += r[0].transcript;
     }
-    document.getElementById("interim").textContent = finalText + interim;
+    document.getElementById("interim").textContent = (finalText + interim).trim();
+    resetSilence();   // Stille-Timer startet erst, nachdem du angefangen hast zu sprechen
   };
   rec.onerror = (ev) => {
+    clearTimeout(silenceTimer);
     recActive = false; updateMic();
     document.getElementById("interim").textContent = "";
     if (ev.error === "not-allowed") addSys("Mikrofon-Zugriff verweigert – in Safari-Einstellungen erlauben.", true);
     else if (ev.error !== "aborted" && ev.error !== "no-speech") addSys("Mikrofon-Fehler: " + ev.error, true);
   };
   rec.onend = () => {
+    clearTimeout(silenceTimer);
     recActive = false; updateMic();
     document.getElementById("interim").textContent = "";
     if (finalText.trim()) sendUserText(finalText);
@@ -598,8 +678,13 @@ function startRec() {
   recActive = true; updateMic();
   rec.start();
 }
-function stopRec() { if (rec && recActive) { try { rec.stop(); } catch {} } recActive = false; updateMic(); }
-function updateMic() { document.getElementById("mic").classList.toggle("rec", recActive); }
+function stopRec() { clearTimeout(silenceTimer); if (rec && recActive) { try { rec.stop(); } catch {} } recActive = false; updateMic(); }
+function updateMic() {
+  const m = document.getElementById("mic");
+  m.classList.toggle("rec", recActive);
+  m.textContent = recActive ? "✔️" : "🎙️";
+  m.title = recActive ? "Fertig – senden" : "Sprechen";
+}
 
 /* ---------- Text-to-Speech ---------- */
 let voices = [];
@@ -607,6 +692,16 @@ function loadVoices() { voices = window.speechSynthesis ? speechSynthesis.getVoi
 if ("speechSynthesis" in window) {
   loadVoices();
   speechSynthesis.onvoiceschanged = loadVoices;
+}
+function voiceQuality(v) {
+  // Höherwertige (heruntergeladene) Stimmen bevorzugen: Premium > Enhanced/Erweitert > Rest
+  const n = (v.name || "").toLowerCase();
+  let s = 0;
+  if (n.includes("premium") || n.includes("superior")) s += 4;
+  if (n.includes("enhanced") || n.includes("erweitert") || n.includes("mejorada")) s += 3;
+  if (n.includes("siri")) s += 3;
+  if (n.includes("eloquence") || n.includes("compact")) s -= 2;
+  return s;
 }
 function pickVoice() {
   if (!voices.length) loadVoices();
@@ -618,8 +713,8 @@ function pickVoice() {
     ? ["es-MX", "es-US", "es-AR", "es-419", "es-ES", "es"]
     : ["es-ES", "es-MX", "es-US", "es"];
   for (const p of prefs) {
-    const v = voices.find(v => v.lang && v.lang.toLowerCase().startsWith(p.toLowerCase()));
-    if (v) return v;
+    const cand = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith(p.toLowerCase()));
+    if (cand.length) return cand.sort((a, b) => voiceQuality(b) - voiceQuality(a))[0];
   }
   return null;
 }
@@ -629,7 +724,7 @@ function speak(text) {
   const u = new SpeechSynthesisUtterance(text);
   const v = pickVoice();
   if (v) { u.voice = v; u.lang = v.lang; } else u.lang = "es-ES";
-  u.rate = 0.95;
+  u.rate = 0.92;
   speechSynthesis.speak(u);
 }
 function stopSpeech() { if ("speechSynthesis" in window) speechSynthesis.cancel(); }
@@ -667,6 +762,7 @@ function renderSettings() {
   document.getElementById("set-model").value = settings.model;
   document.getElementById("set-level").value = settings.level;
   document.getElementById("set-reclang").value = settings.recLang;
+  document.getElementById("set-pause").value = settings.pauseSec;
   document.getElementById("set-key").value = settings.apiKey;
   const sel = document.getElementById("set-voice");
   sel.innerHTML = '<option value="auto">Automatisch</option>';
@@ -683,6 +779,7 @@ function saveSettings() {
   settings.model = document.getElementById("set-model").value;
   settings.level = document.getElementById("set-level").value;
   settings.recLang = document.getElementById("set-reclang").value;
+  settings.pauseSec = document.getElementById("set-pause").value;
   settings.voiceURI = document.getElementById("set-voice").value;
   settings.apiKey = document.getElementById("set-key").value.trim();
   store.set("settings", settings);
