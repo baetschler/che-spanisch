@@ -396,7 +396,7 @@
     </div>
     <button class="btn" onclick="saveSettings()">Speichern</button>
     <button class="btn danger" onclick="clearErrors()">Fehler-Liste leeren</button>
-    <div class="version">¡Che! v0.5.1</div>
+    <div class="version">¡Che! v0.5.2</div>
   </main>
 </div>
 
@@ -407,7 +407,7 @@
    Eine Datei, kein Build, kein Server außer api.anthropic.com.
    ===================================================================== */
 
-const APP_VERSION = "0.5.1";
+const APP_VERSION = "0.5.2";
 const API_URL = "https://api.anthropic.com/v1/messages";
 
 /* ---------- Szenarien ---------- */
@@ -451,49 +451,6 @@ const SCENARIO_PROMPTS = {
    Format der Quelldateien: docs/chatgpt-vorlage.md */
 /* == LEKTIONEN:START == */
 const LESSONS = [
-  {
-    id: "viajes-2026-08-15",
-    emoji: "✈️",
-    t: "Viajes y vacaciones",
-    d: "ChatGPT-Session vom 15.08. — jetzt aktiv üben",
-    fecha: "2026-08-15",
-    tema: "Sus vacaciones, dos opciones — el Caribe en un barco con su amigo Michael, o el norte de España. Se decidió por la aventura porque al norte puede ir muchas veces, pero esta oportunidad es ahora.",
-    vocab: [
-      { es: "me atrae", de: "zieht mich an / spricht mich an", ej: "Me atrae más vivir una aventura." },
-      { es: "una aventura", de: "ein Abenteuer", ej: "El viaje en barco es una aventura." },
-      { es: "descansar", de: "sich erholen", ej: "Quiero descansar en mis vacaciones." },
-      { es: "conocer lugares", de: "Orte kennenlernen", ej: "Me gusta conocer lugares nuevos." },
-      { es: "una oportunidad", de: "eine Gelegenheit", ej: "Esta oportunidad es ahora." },
-      { es: "tranquilo/a", de: "ruhig", ej: "El norte de España puede ser tranquilo." },
-      { es: "aventurero/a", de: "abenteuerlich", ej: "El Caribe suena más aventurero." },
-      { es: "el Caribe", de: "die Karibik", ej: "Quiero ir al Caribe." },
-      { es: "un barco", de: "ein Boot / Schiff", ej: "Vamos en un barco." },
-      { es: "las vacaciones", de: "der Urlaub", ej: "¿Qué querés hacer en tus vacaciones?" },
-      { es: "los pensamientos", de: "die Gedanken", ej: "Escribí mis pensamientos." },
-    ],
-    gramatica: [
-      { t: "saber — Präsens und Vergangenheit", resumen: "sé / no sé im Präsens, sabía im Imperfecto.",
-        html: "<p><b>Präsens:</b> yo <b>sé</b> — <i>Yo sé la palabra.</i> Verneint: <i>No sé la palabra.</i></p><p><b>Imperfecto</b> (Zustand in der Vergangenheit, „ich wusste nicht&quot;): yo <b>sabía</b> — <i>No sabía la palabra.</i></p><p>Merke: „ich weiß es nicht&quot; ist <i>no sé</i>, „ich wusste es nicht&quot; ist <i>no sabía</i>. Der Klassiker im Gespräch.</p>" },
-      { t: "Vorlieben ausdrücken", resumen: "me gusta / me atrae más / quiero, alle drei mit Infinitiv.",
-        html: "<p><b>me gusta</b> + Grundform: <i>Me gusta conocer lugares nuevos.</i></p><p><b>me atrae más</b> + Grundform: <i>Me atrae más vivir una aventura.</i></p><p><b>quiero</b> + Grundform: <i>Quiero ir al Caribe.</i></p><p>Alle drei nehmen den Infinitiv, nicht die konjugierte Form.</p>" },
-      { t: "Eine Entscheidung begründen", resumen: "Vorliebe nennen, dann porque + Grund, dann pero + das entscheidende Argument.",
-        html: "<p>Das Satzmuster aus der Session, wiederverwendbar für jede Abwägung:</p><p><i>Me atrae más vivir una aventura, <b>porque</b> al norte de España puedo ir muchas veces, <b>pero</b> esta oportunidad es ahora.</i></p>" },
-    ],
-    frases: [
-      "¿Podemos seguir hablando en mi móvil?",
-      "Quiero decidir qué hacer en mis vacaciones.",
-      "Hay dos opciones.",
-      "Voy al norte de España.",
-      "Quiero ir al Caribe en un barco con mi amigo Michael.",
-      "Escribí mis pensamientos y traté de ponerlos en orden.",
-    ],
-    practica: [
-      { hueco: "No ___ esa palabra. (presente)", sol: "sé" },
-      { hueco: "No ___ esa palabra ayer. (pasado)", sol: "sabía" },
-      { hueco: "Me ___ más viajar al Caribe.", sol: "atrae" },
-      { hueco: "Quiero ir ___ Caribe en ___ barco.", sol: "al, un" },
-    ],
-  },
 ];
 /* == LEKTIONEN:ENDE == */
 
