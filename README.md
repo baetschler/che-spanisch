@@ -1,6 +1,6 @@
 # ¡Che! — Spanisch-Sprechtrainer
 
-Version 0.4.0
+Version 0.5.0
 
 Eine Single-File-Web-App (`index.html`) zum Spanisch-Sprechen-Üben, gebaut für Kai:
 Rioplatense (Voseo, Uruguay) als Standard, Spanien-Modus zuschaltbar.
@@ -15,6 +15,11 @@ Rioplatense (Voseo, Uruguay) als Standard, Spanien-Modus zuschaltbar.
 - **Konversation → Übungen**: Grammatikfehler speisen das 🏋️ Grammatik-Training (Muster-Analyse), fehlende/falsche Wörter aus Gesprächen landen automatisch im 🃏 Vokabel-Deck
 - **Gespräche fortsetzen**: die letzten 12 Unterhaltungen werden lokal gespeichert und sind vom Home-Screen aus fortsetzbar
 - **„Über dich"**: frei editierbares Profil in den Einstellungen, das der Tutor immer kennt
+- **Lektionen aus ChatGPT-Voice-Sessions**: Kai spricht mit ChatGPT Voice und lässt sich die
+  Findings als Markdown geben (`~/Documents/Codex/<datum>/<projekt>/outputs/*.md`). Der Stoff
+  wandert in den `LESSONS`-Block in `index.html` und taucht dreifach auf: Vokabeln automatisch
+  im 🃏 Deck, Grammatik im 📖 Spickzettel, plus eigene Übungskarte unter „Aus deinen Sessions",
+  in der der Tutor genau dieses Material abfragt und danach frei darüber weiterredet.
 - **Modelle**: Claude Opus 5 (Standard) oder Haiku 4.5 (schnell/günstig), umschaltbar
 
 ## Technik

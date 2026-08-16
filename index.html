@@ -231,6 +231,10 @@
     <div class="cards" id="scenario-cards"></div>
     <div class="section-h">Gezielt üben</div>
     <div class="cards" id="training-cards"></div>
+    <div id="lesson-sec" style="display:none">
+      <div class="section-h">Aus deinen Sessions</div>
+      <div class="cards" id="lesson-cards"></div>
+    </div>
     <div class="home-note">Tippe ein Szenario und sprich einfach los.<br>Korrekturen erscheinen dezent unter deinen Sätzen.</div>
   </main>
 </div>
@@ -327,6 +331,7 @@
         <p>Genauso funktionieren: <b>encantar</b> (lieben), <b>doler</b> (me duele la rodilla), <b>parecer</b>, <b>faltar</b>.</p>
       </div>
     </details>
+    <div id="gram-lessons"></div>
     <div class="home-note">Fürs aktive Üben: 🏋️ Grammatik-Training — da wird erst kurz erklärt, dann geübt.</div>
   </main>
 </div>
@@ -391,7 +396,7 @@
     </div>
     <button class="btn" onclick="saveSettings()">Speichern</button>
     <button class="btn danger" onclick="clearErrors()">Fehler-Liste leeren</button>
-    <div class="version">¡Che! v0.4.0</div>
+    <div class="version">¡Che! v0.5.0</div>
   </main>
 </div>
 
@@ -402,7 +407,7 @@
    Eine Datei, kein Build, kein Server außer api.anthropic.com.
    ===================================================================== */
 
-const APP_VERSION = "0.4.0";
+const APP_VERSION = "0.5.0";
 const API_URL = "https://api.anthropic.com/v1/messages";
 
 /* ---------- Szenarien ---------- */
@@ -434,6 +439,113 @@ const SCENARIO_PROMPTS = {
   training: `MODO ENTRENAMIENTO DE GRAMÁTICA. En el system prompt tenés la lista de errores del usuario. Analizála e identificá el PATRÓN más importante (p.ej. ser/estar, conjugación del voseo, pretérito vs. imperfecto, por/para). Si la lista está vacía o es corta, elegí un patrón típico de nivel A2. ANTES de los ejercicios: explicá el patrón en pocas frases — CÓMO se forma y CUÁNDO se usa, con 2-3 ejemplos (la explicación gramatical puede ser en alemán, los ejemplos en español). Preguntá si está claro. Después, ejercicios de a UNO: traducir una frase corta del alemán, completar un hueco, o corregir una frase con error. Esperá la respuesta, evaluála (usá "correcciones" si hay error), dale feedback breve y seguí con el próximo. Subí la dificultad de a poco. Cada 5 ejercicios: mini-balance y preguntá si seguir con este patrón u otro.`,
   vocab: `MODO VOCABULARIO. Entrenás palabras y expresiones útiles para el usuario. En el system prompt puede haber una lista de palabras ya vistas — muchas vienen de sus propias conversaciones (palabras que no sabía): esas son las MÁS importantes, repasálas primero. Después introducí palabras nuevas de sus contextos (familia uruguaya, mate/asado, surf, furgoneta/camping, comida, viaje; máx. 4-5 nuevas por sesión). De a UNA: preguntá alemán→español o español→alemán, o pedí que use la palabra en una frase propia. Evaluá, feedback breve, siguiente. CADA palabra nueva que introduzcas, agregala también al campo "vocabulario" como {es, de}. Palabras ya repasadas NO van en "vocabulario".`,
 };
+
+/* ---------- Lektionen aus ChatGPT-Voice-Sessions ----------
+   Kai spricht mit ChatGPT Voice und lässt sich die Findings als Markdown geben
+   (~/Documents/Codex/<datum>/<projekt>/outputs/*.md). Von dort wandert der Stoff
+   hierher: Vokabeln automatisch ins 🃏 Deck, Grammatik in den 📖 Spickzettel,
+   und als eigener Übungsmodus zum Nachsprechen. */
+const LESSONS = [
+  {
+    id: "viajes-2026-08-15",
+    emoji: "✈️",
+    t: "Viajes y vacaciones",
+    d: "ChatGPT-Session vom 15.08. — jetzt aktiv üben",
+    fecha: "2026-08-15",
+    tema: "Sus vacaciones: dos opciones — el Caribe en un barco con su amigo Michael, o el norte de España. Se decidió por la aventura porque al norte puede ir muchas veces, pero esta oportunidad es ahora.",
+    vocab: [
+      { es: "me atrae",          de: "zieht mich an / spricht mich an", ej: "Me atrae más vivir una aventura." },
+      { es: "una aventura",      de: "ein Abenteuer",                   ej: "El viaje en barco es una aventura." },
+      { es: "descansar",         de: "sich erholen",                    ej: "Quiero descansar en mis vacaciones." },
+      { es: "conocer lugares",   de: "Orte kennenlernen",               ej: "Me gusta conocer lugares nuevos." },
+      { es: "una oportunidad",   de: "eine Gelegenheit",                ej: "Esta oportunidad es ahora." },
+      { es: "tranquilo/a",       de: "ruhig",                           ej: "El norte de España puede ser tranquilo." },
+      { es: "aventurero/a",      de: "abenteuerlich",                   ej: "El Caribe suena más aventurero." },
+      { es: "el Caribe",         de: "die Karibik",                     ej: "Quiero ir al Caribe." },
+      { es: "un barco",          de: "ein Boot / Schiff",               ej: "Vamos en un barco." },
+      { es: "las vacaciones",    de: "der Urlaub",                      ej: "¿Qué querés hacer en tus vacaciones?" },
+      { es: "los pensamientos",  de: "die Gedanken",                    ej: "Escribí mis pensamientos." },
+    ],
+    gramatica: [
+      {
+        t: "saber — Präsens und Vergangenheit",
+        resumen: "sé / no sé (presente) vs. sabía (imperfecto).",
+        html: `<p><b>Präsens:</b> yo <b>sé</b> — <i>Yo sé la palabra.</i> · Verneint: <i>No sé la palabra.</i></p>
+               <p><b>Imperfecto</b> (Zustand in der Vergangenheit, „ich wusste nicht"): yo <b>sabía</b> — <i>No sabía la palabra.</i></p>
+               <p>Merke: „ich weiß es nicht" ist <i>no sé</i>, „ich wusste es nicht" ist <i>no sabía</i>. Der Klassiker im Gespräch.</p>`,
+      },
+      {
+        t: "Vorlieben ausdrücken",
+        resumen: "me gusta / me atrae más / quiero + Infinitiv.",
+        html: `<p><b>me gusta</b> + Grundform: <i>Me gusta conocer lugares nuevos.</i></p>
+               <p><b>me atrae más</b> + Grundform: <i>Me atrae más vivir una aventura.</i></p>
+               <p><b>quiero</b> + Grundform: <i>Quiero ir al Caribe.</i></p>
+               <p>Alle drei nehmen den Infinitiv, nicht die konjugierte Form. „Me gusta <s>conozco</s>" geht nicht.</p>`,
+      },
+      {
+        t: "Eine Entscheidung begründen",
+        resumen: "Muster: A me atrae más, porque B puedo ..., pero esta oportunidad es ahora.",
+        html: `<p>Das Satzmuster aus deiner Session, wiederverwendbar für jede Abwägung:</p>
+               <p><i>Me atrae más vivir una aventura, <b>porque</b> al norte de España puedo ir muchas veces, <b>pero</b> esta oportunidad es ahora.</i></p>
+               <p>Bauplan: Vorliebe nennen → <b>porque</b> + Grund → <b>pero</b> + das Argument, das den Ausschlag gibt.</p>`,
+      },
+    ],
+    frases: [
+      "¿Podemos seguir hablando en mi móvil?",
+      "Quiero decidir qué hacer en mis vacaciones.",
+      "Hay dos opciones.",
+      "Voy al norte de España.",
+      "Quiero ir al Caribe en un barco con mi amigo Michael.",
+      "Escribí mis pensamientos y traté de ponerlos en orden.",
+    ],
+    practica: [
+      { hueco: "No ___ esa palabra. (presente)", sol: "sé" },
+      { hueco: "No ___ esa palabra ayer. (pasado)", sol: "sabía" },
+      { hueco: "Me ___ más viajar al Caribe.", sol: "atrae" },
+      { hueco: "Quiero ir ___ Caribe en ___ barco.", sol: "al, un" },
+    ],
+  },
+];
+
+function lessonScenarios() {
+  return LESSONS.map(l => ({ id: "lec-" + l.id, emoji: l.emoji, t: l.t, d: l.d, lesson: l }));
+}
+
+function lessonPrompt(l) {
+  return `MODO LECCIÓN — "${l.t}". Este material salió de una conversación real que el usuario tuvo con otro tutor de voz. Ahora lo consolidamos HABLANDO, no leyendo. Tema: ${l.tema}
+Primero repasá el material del bloque siguiente, de a poco: pedile que use las palabras y estructuras en frases PROPIAS (no que traduzca la lista), corregí, y hacé los huecos de práctica de a UNO.
+Cuando el material esté cubierto, pasá a conversación libre sobre el mismo tema y llevalo a que use lo repasado sin avisarle.
+Nunca enumeres la lista entera de una: máximo una o dos cosas por turno.`;
+}
+
+function lessonMaterial(l) {
+  const p = ["MATERIAL DE LA LECCIÓN (de la sesión del " + l.fecha + "):"];
+  p.push("\nVOCABULARIO:\n" + l.vocab.map(v => `- ${v.es} = ${v.de} (ej.: ${v.ej})`).join("\n"));
+  p.push("\nGRAMÁTICA A REPASAR:\n" + l.gramatica.map(g => `- ${g.t}: ${g.resumen}`).join("\n"));
+  p.push("\nFRASES ÚTILES (que las vuelva a usar):\n" + l.frases.map(f => `- ${f}`).join("\n"));
+  p.push("\nHUECOS PARA PRACTICAR (de a uno, la solución es solo para vos):\n" +
+    l.practica.map(x => `- ${x.hueco}  → ${x.sol}`).join("\n"));
+  return p.join("\n");
+}
+
+function scenarioPrompt(s) {
+  return s.lesson ? lessonPrompt(s.lesson) : SCENARIO_PROMPTS[s.id];
+}
+
+/* Lektions-Vokabeln landen automatisch im Deck (dedupliziert über "es"). */
+function mergeLessonVocab() {
+  let added = 0;
+  for (const l of LESSONS) {
+    for (const v of l.vocab) {
+      const key = v.es.toLowerCase().trim();
+      if (!vocabLog.some(x => x.es.toLowerCase().trim() === key)) {
+        vocabLog.push({ es: v.es, de: v.de, added: Date.now(), src: l.id });
+        added++;
+      }
+    }
+  }
+  if (added) { vocabLog = vocabLog.slice(-300); store.set("vocab", vocabLog); }
+}
 
 /* ---------- State & Storage ---------- */
 const store = {
@@ -476,7 +588,26 @@ function showView(name) {
   document.getElementById("view-" + name).classList.add("active");
   if (name === "home") renderHome();
   if (name === "errors") renderErrors();
+  if (name === "grammar") renderGrammarLessons();
   if (name === "settings") renderSettings();
+}
+
+/* ---------- Grammatik aus Lektionen (statisch, kostet keine Tokens) ---------- */
+function renderGrammarLessons() {
+  const wrap = document.getElementById("gram-lessons");
+  wrap.innerHTML = "";
+  for (const l of LESSONS) {
+    for (const g of l.gramatica) {
+      const d = document.createElement("details");
+      d.className = "gram";
+      const s = document.createElement("summary");
+      s.textContent = `${l.emoji} ${g.t}`;
+      const body = document.createElement("div");
+      body.innerHTML = g.html + `<p style="color:var(--muted);font-size:13px">Aus „${l.t}", ${l.fecha}</p>`;
+      d.appendChild(s); d.appendChild(body);
+      wrap.appendChild(d);
+    }
+  }
 }
 
 /* ---------- Home ---------- */
@@ -498,6 +629,9 @@ function renderHome() {
   };
   fill("scenario-cards", SCENARIOS);
   fill("training-cards", TRAINING_MODES);
+  const lecs = lessonScenarios();
+  document.getElementById("lesson-sec").style.display = lecs.length ? "block" : "none";
+  if (lecs.length) fill("lesson-cards", lecs);
   renderResume();
 }
 
@@ -576,7 +710,9 @@ VOCABULARIO NUEVO (campo "vocabulario") — en TODOS los modos:
   const blocks = [{ type: "text", text: stable, cache_control: { type: "ephemeral" } }];
   const mode = chat.scenario ? chat.scenario.id : null;
 
-  if (mode === "training") {
+  if (chat.scenario && chat.scenario.lesson) {
+    blocks.push({ type: "text", text: lessonMaterial(chat.scenario.lesson) });
+  } else if (mode === "training") {
     const all = topErrors(30);
     blocks.push({
       type: "text",
@@ -692,7 +828,7 @@ function startChat(scenario) {
   const variant = settings.variant === "uy" ? "rioplatense/uruguayo" : "de España";
   chat.messages.push({
     role: "user",
-    content: `[Inicio de sesión — no es un mensaje del usuario] Escenario: ${SCENARIO_PROMPTS[scenario.id]} Español ${variant}. Arrancá vos ahora con 1–2 frases.`,
+    content: `[Inicio de sesión — no es un mensaje del usuario] Escenario: ${scenarioPrompt(scenario)} Español ${variant}. Arrancá vos ahora con 1–2 frases.`,
   });
   runTurn();
 }
@@ -700,7 +836,7 @@ function startChat(scenario) {
 function resumeSession(id) {
   const s = sessions.find(x => x.id === id);
   if (!s) return;
-  const scenario = SCENARIOS.concat(TRAINING_MODES).find(x => x.id === s.scenarioId)
+  const scenario = SCENARIOS.concat(TRAINING_MODES, lessonScenarios()).find(x => x.id === s.scenarioId)
     || { id: s.scenarioId, emoji: s.emoji, t: s.title };
   chat = { sessionId: s.id, scenario, messages: [...s.messages], busy: false };
   document.getElementById("chat-title").textContent = s.emoji + " " + s.title;
@@ -1026,6 +1162,7 @@ document.getElementById("setup-save").onclick = () => {
 
 /* ---------- Init ---------- */
 if (!SR) document.getElementById("mic").style.display = "none";
+mergeLessonVocab();
 showView(settings.apiKey ? "home" : "setup");
 </script>
 </body>
