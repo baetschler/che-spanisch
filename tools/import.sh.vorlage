@@ -41,6 +41,21 @@ mkdir "$LOCK" 2>/dev/null || exit 0
 trap 'rmdir "$LOCK" 2>/dev/null' EXIT
 
 [ -d "$QUELLE" ] || exit 0          # Ordner noch nicht da: still beenden
+
+# macOS-Zugriffskontrolle (TCC): ein launchd-Job darf ~/Documents nur mit
+# "Vollzugriff auf Festplatte" lesen. Ohne das findet der Scan schlicht nichts,
+# und ein leerer Import wuerde die App leerraeumen. Also hier hart abbrechen.
+if [ "$(find "$QUELLE" -type d -name outputs -exec find {} -name '*.md' \; 2>/dev/null | wc -l | tr -d ' ')" = "0" ]; then
+    log "abgebrochen: keine Quelldateien sichtbar (fehlt /bin/bash der Vollzugriff auf Festplatte?)"
+    if [ ! -f "$DIR/.tcc_gemeldet" ]; then
+        touch "$DIR/.tcc_gemeldet"
+        notify "⚠️ ¡Che!-Import sieht keine Session-Notizen in ~/Documents/Codex.
+Meist fehlt /bin/bash der Vollzugriff auf die Festplatte:
+Systemeinstellungen → Datenschutz → Vollzugriff auf Festplatte."
+    fi
+    exit 0
+fi
+rm -f "$DIR/.tcc_gemeldet"
 cd "$REPO" 2>/dev/null || { log "FEHLER: Repo nicht gefunden ($REPO)"; exit 1; }
 
 # ---------- 1. Trockenlauf: lohnt sich ueberhaupt etwas? ----------

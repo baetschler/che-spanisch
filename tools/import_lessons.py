@@ -294,6 +294,15 @@ def main():
     vorher = text[text.index(START):text.index(ENDE) + len(ENDE)]
     nachher = js_block(lektionen)
 
+    # Schutzschalter: aus dem Nichts alle Lektionen loeschen ist praktisch immer ein
+    # Zugriffs- oder Pfadproblem (z.B. launchd ohne Full Disk Access auf ~/Documents),
+    # nie eine echte Absicht. Lieber abbrechen als die App leerraeumen.
+    if not lektionen and "id:" in vorher:
+        print("FEHLER: keine gueltige Lektion gefunden, aber index.html enthaelt welche.")
+        print(f"        Quelle lesbar? {quelle} — {len(dateien)} Datei(en) gesehen.")
+        print("        Nichts geschrieben.")
+        return 1
+
     print(f"{len(dateien)} Datei(en) gefunden, {len(lektionen)} Lektion(en) gültig, "
           f"{len(uebersprungen)} übersprungen")
     for f, gruende in uebersprungen:
