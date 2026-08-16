@@ -1,0 +1,124 @@
+#!/bin/bash
+# import.sh - Holt neue ChatGPT-Voice-Session-Notizen in die ¡Che!-App.
+# Laeuft per launchd (com.kaibachler.che-lektionen) alle 30 Minuten.
+#
+# Ablauf:
+#   1. Trockenlauf (rein lokal, kostenlos) - passiert nichts, ist sofort Schluss
+#   2. Nur wenn sich etwas aendert: Git-Sicherheitschecks, echter Import,
+#      Commit, Push (= Deploy auf GitHub Pages)
+#   3. iMessage bei neuer Lektion, bei uebersprungenen Dateien und bei Fehlern
+#
+# Kostet keine Claude-Credits - rein lokale Bordmittel.
+# Format der Quelldateien: ~/Projects/che-spanisch/docs/chatgpt-vorlage.md
+
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin"
+
+# Ueberschreibbar, damit sich der Ablauf gegen eine Wegwerf-Kopie testen laesst
+# (CHE_REPO / CHE_QUELLE / CHE_NO_NOTIFY=1). Im Normalbetrieb greifen die Defaults.
+REPO="${CHE_REPO:-$HOME/Projects/che-spanisch}"
+QUELLE="${CHE_QUELLE:-$HOME/Documents/Codex}"
+DIR="$(cd "$(dirname "$0")" && pwd)"
+LOG="$DIR/import.log"
+LOCK="$DIR/.lock"
+SKIPSTATE="$DIR/.last_skips"
+BEHINDSTATE="$DIR/.last_behind"
+
+log() { echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG"; }
+notify() {
+    if [ "$CHE_NO_NOTIFY" = "1" ]; then log "[notify unterdrueckt] $1"; return; fi
+    osascript "$DIR/notify.applescript" "$1" >/dev/null 2>>"$LOG"
+}
+
+# Stale-Lock-Schutz: ein Lauf dauert Sekunden. Aelter als 10 Minuten => verwaist.
+if [ -d "$LOCK" ]; then
+    lockage=$(( $(date +%s) - $(stat -f %m "$LOCK") ))
+    if [ "$lockage" -gt 600 ]; then
+        log "verwaistes Lock (${lockage}s alt) entfernt"
+        rmdir "$LOCK" 2>/dev/null
+    fi
+fi
+mkdir "$LOCK" 2>/dev/null || exit 0
+trap 'rmdir "$LOCK" 2>/dev/null' EXIT
+
+[ -d "$QUELLE" ] || exit 0          # Ordner noch nicht da: still beenden
+cd "$REPO" 2>/dev/null || { log "FEHLER: Repo nicht gefunden ($REPO)"; exit 1; }
+
+# ---------- 1. Trockenlauf: lohnt sich ueberhaupt etwas? ----------
+trocken=$(python3 tools/import_lessons.py --source "$QUELLE" --dry-run 2>&1)
+rc=$?
+
+# Uebersprungene Dateien melden - aber nur einmal je Zustand, nicht alle 30 Minuten
+skips=$(printf '%s\n' "$trocken" | grep 'ÜBERSPRUNGEN' || true)
+if [ -n "$skips" ]; then
+    fingerprint=$(printf '%s' "$skips" | md5)
+    if [ "$fingerprint" != "$(cat "$SKIPSTATE" 2>/dev/null)" ]; then
+        printf '%s' "$fingerprint" > "$SKIPSTATE"
+        notify "⚠️ ¡Che!: Session-Notizen passen nicht zur Vorlage und wurden NICHT importiert:
+${skips}
+
+Vorlage: docs/chatgpt-vorlage.md"
+        log "uebersprungen gemeldet: $(printf '%s' "$skips" | tr '\n' ' ')"
+    fi
+else
+    rm -f "$SKIPSTATE"
+fi
+
+if [ "$rc" -eq 1 ]; then
+    log "FEHLER im Importer: $(printf '%s' "$trocken" | tr '\n' ' ')"
+    notify "❌ ¡Che!-Import fehlgeschlagen. Details: $LOG"
+    exit 1
+fi
+if [ "$rc" -ne 10 ]; then
+    exit 0                          # nichts Neues - der Normalfall, kein Lograuschen
+fi
+
+# ---------- 2. Git-Sicherheitschecks ----------
+if [ -n "$(git status --porcelain)" ]; then
+    log "uebersprungen: Arbeitskopie nicht sauber (nicht in fremde Aenderungen commiten)"
+    exit 0
+fi
+git fetch --quiet origin main 2>>"$LOG" || { log "git fetch fehlgeschlagen"; exit 1; }
+if [ -n "$(git log --oneline HEAD..origin/main)" ]; then
+    log "uebersprungen: origin/main ist voraus - erst manuell zusammenfuehren"
+    # Nur einmal je Stand melden, sonst nervt es alle 30 Minuten bis zum Aufraeumen
+    stand=$(git rev-parse origin/main)
+    if [ "$stand" != "$(cat "$BEHINDSTATE" 2>/dev/null)" ]; then
+        printf '%s' "$stand" > "$BEHINDSTATE"
+        notify "⚠️ ¡Che!: origin/main ist dem lokalen Stand voraus, Import pausiert bis das zusammengefuehrt ist."
+    fi
+    exit 0
+fi
+rm -f "$BEHINDSTATE"
+
+# ---------- 3. Echter Import + Deploy ----------
+echt=$(python3 tools/import_lessons.py --source "$QUELLE" 2>&1)
+if [ $? -ne 10 ]; then
+    log "FEHLER beim echten Lauf: $(printf '%s' "$echt" | tr '\n' ' ')"
+    notify "❌ ¡Che!-Import fehlgeschlagen. Details: $LOG"
+    git checkout -- . 2>/dev/null
+    exit 1
+fi
+
+version=$(printf '%s\n' "$echt" | grep -o 'Version jetzt [0-9.]*' | awk '{print $3}')
+neue=$(printf '%s\n' "$echt" | grep '^  ok ' | sed 's/^  ok //')
+
+git add -A
+git commit -q -m "v${version} - Lektionen aus ChatGPT-Sessions importiert
+
+$(printf '%s\n' "$neue")
+
+Automatisch erzeugt von tools/import_lessons.py (launchd: com.kaibachler.che-lektionen).
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>" || { log "commit fehlgeschlagen"; exit 1; }
+
+if git push --quiet origin main 2>>"$LOG"; then
+    log "v${version} importiert und gepusht | $(printf '%s' "$neue" | tr '\n' ' | ')"
+    notify "🧉 ¡Che! v${version} aktualisiert:
+${neue}
+
+In ein paar Minuten auf dem iPhone (App neu laden)."
+else
+    log "push fehlgeschlagen - Commit liegt lokal"
+    notify "⚠️ ¡Che!: Import committed, aber Push fehlgeschlagen. Commit liegt lokal."
+    exit 1
+fi

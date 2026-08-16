@@ -1,6 +1,6 @@
 # ¡Che! — Spanisch-Sprechtrainer
 
-Version 0.5.0
+Version 0.5.1
 
 Eine Single-File-Web-App (`index.html`) zum Spanisch-Sprechen-Üben, gebaut für Kai:
 Rioplatense (Voseo, Uruguay) als Standard, Spanien-Modus zuschaltbar.
@@ -21,6 +21,27 @@ Rioplatense (Voseo, Uruguay) als Standard, Spanien-Modus zuschaltbar.
   im 🃏 Deck, Grammatik im 📖 Spickzettel, plus eigene Übungskarte unter „Aus deinen Sessions",
   in der der Tutor genau dieses Material abfragt und danach frei darüber weiterredet.
 - **Modelle**: Claude Opus 5 (Standard) oder Haiku 4.5 (schnell/günstig), umschaltbar
+
+## Lektionen automatisch importieren
+
+Kai spricht mit ChatGPT Voice und lässt sich am Ende eine Zusammenfassung nach fester
+Vorlage geben ([`docs/chatgpt-vorlage.md`](docs/chatgpt-vorlage.md)). Die Datei landet unter
+`~/Documents/Codex/<datum>/<projekt>/outputs/*.md`.
+
+```bash
+python3 tools/import_lessons.py --dry-run    # zeigt nur, was passieren würde
+python3 tools/import_lessons.py              # schreibt den LESSONS-Block, bumpt die Patch-Version
+```
+
+Der Importer ersetzt ausschließlich den Bereich zwischen `LEKTIONEN:START` und
+`LEKTIONEN:ENDE` in `index.html`. Dateien, die nicht zur Vorlage passen, werden mit
+Begründung übersprungen statt halb übernommen.
+
+Automatisch läuft das per launchd alle 30 Minuten
+(`~/Scripts/che-lektionen/import.sh`, Label `com.kaibachler.che-lektionen`): Trockenlauf,
+und nur bei echten Änderungen Commit und Push. Der Job hält an, wenn die Arbeitskopie
+nicht sauber ist oder `origin/main` voraus ist, und meldet sich per iMessage bei neuer
+Lektion, ungültiger Datei oder Fehler.
 
 ## Technik
 
